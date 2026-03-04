@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:upstash.com)",
+      "WebFetch(domain:better-auth.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:www.prisma.io)",
+      "WebFetch(domain:jb.desishub.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:better-auth-ui.com)",
+      "Bash(npm install @anthropic-ai/sdk better-auth @prisma/client docx lucide-react react-markdown)",
+      "Bash(npm install -D prisma)",
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add card table badge button tabs tooltip progress sheet input label separator skeleton dropdown-menu avatar -y)",
+      "Bash(npx prisma init)",
+      "Bash(npm install dotenv)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx prisma generate)",
+      "Bash(npx next build)",
+      "Bash(npm install @prisma/pg-worker @prisma/driver-adapter-utils)",
+      "Bash(npm uninstall @prisma/pg-worker @prisma/driver-adapter-utils)",
+      "Bash(npm install @prisma/adapter-pg pg)",
+      "Bash(npm install -D @types/pg)"
+    ]
+  }
+}

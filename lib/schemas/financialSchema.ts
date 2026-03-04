@@ -1,0 +1,93 @@
+export const FINANCIAL_EXTRACTION_SCHEMA = {
+  type: "object",
+  properties: {
+    company_name: { type: ["string", "null"] },
+    currency: { type: "string" },
+    periods: {
+      type: "array",
+      items: { type: "string" },
+    },
+    income_statement: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          period: { type: "string" },
+          is_projected: { type: "boolean" },
+          revenue: { type: ["number", "null"] },
+          cogs: { type: ["number", "null"] },
+          gross_profit: { type: ["number", "null"] },
+          gross_margin_pct: { type: ["number", "null"] },
+          sga: { type: ["number", "null"] },
+          rd: { type: ["number", "null"] },
+          ebitda: { type: ["number", "null"] },
+          ebitda_adjusted: { type: ["number", "null"] },
+          ebitda_margin_pct: { type: ["number", "null"] },
+          ebit: { type: ["number", "null"] },
+          interest_expense: { type: ["number", "null"] },
+          net_income: { type: ["number", "null"] },
+          revenue_growth_pct: { type: ["number", "null"] },
+        },
+        required: ["period", "is_projected"],
+      },
+    },
+    balance_sheet: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          period: { type: "string" },
+          total_assets: { type: ["number", "null"] },
+          total_liabilities: { type: ["number", "null"] },
+          total_equity: { type: ["number", "null"] },
+          cash: { type: ["number", "null"] },
+          net_working_capital: { type: ["number", "null"] },
+          total_debt: { type: ["number", "null"] },
+          accounts_receivable: { type: ["number", "null"] },
+          inventory: { type: ["number", "null"] },
+          accounts_payable: { type: ["number", "null"] },
+        },
+        required: ["period"],
+      },
+    },
+    cash_flow: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          period: { type: "string" },
+          operating_cash_flow: { type: ["number", "null"] },
+          capex: { type: ["number", "null"] },
+          free_cash_flow: { type: ["number", "null"] },
+          acquisitions: { type: ["number", "null"] },
+          debt_issuance: { type: ["number", "null"] },
+          dividends: { type: ["number", "null"] },
+        },
+        required: ["period"],
+      },
+    },
+    computed_metrics: {
+      type: "object",
+      properties: {
+        revenue_cagr: { type: ["number", "null"] },
+        avg_ebitda_margin: { type: ["number", "null"] },
+        fcf_conversion: { type: ["number", "null"] },
+        net_leverage: { type: ["number", "null"] },
+        capex_pct_revenue: { type: ["number", "null"] },
+        dso: { type: ["number", "null"] },
+        dpo: { type: ["number", "null"] },
+        dio: { type: ["number", "null"] },
+      },
+    },
+    quality_of_earnings_flags: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: [
+    "currency",
+    "periods",
+    "income_statement",
+    "quality_of_earnings_flags",
+  ],
+};
