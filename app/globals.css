@@ -129,6 +129,44 @@
   }
 }
 
+/* Prose table styles */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose thead {
+  border-bottom: 2px solid var(--border);
+  background: var(--muted);
+}
+
+.prose th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.prose td {
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.prose tbody tr:hover {
+  background: var(--muted);
+}
+
+.prose .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Print styles for memo export */
 @media print {
   body {
@@ -145,5 +183,16 @@
   main {
     padding: 0 !important;
     max-width: 100% !important;
+  }
+  .prose table {
+    border: 1px solid #ccc;
+  }
+  .prose th,
+  .prose td {
+    border: 1px solid #ccc;
+    padding: 4px 8px;
+  }
+  .prose thead {
+    background: #f0f0f0 !important;
   }
 }

@@ -22,7 +22,12 @@
       "Bash(npm install @prisma/pg-worker @prisma/driver-adapter-utils)",
       "Bash(npm uninstall @prisma/pg-worker @prisma/driver-adapter-utils)",
       "Bash(npm install @prisma/adapter-pg pg)",
-      "Bash(npm install -D @types/pg)"
+      "Bash(npm install -D @types/pg)",
+      "Bash(node -e \"console.log\\(require\\(''next/package.json''\\).version\\)\")",
+      "Bash(gh issue view 85243 --repo vercel/next.js --json title,body,state,comments)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install remark-gfm)",
+      "Bash(npx tsc --noEmit --pretty)"
     ]
   }
 }

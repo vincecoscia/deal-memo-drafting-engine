@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { RefreshCw, Pencil, Check, X, Loader2 } from "lucide-react";
@@ -143,7 +144,18 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
                 Regenerating section...
               </div>
             ) : (
-              <ReactMarkdown>{section.content}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto rounded-lg border border-border my-4">
+                      <table>{children}</table>
+                    </div>
+                  ),
+                }}
+              >
+                {section.content}
+              </ReactMarkdown>
             )}
           </div>
         )}

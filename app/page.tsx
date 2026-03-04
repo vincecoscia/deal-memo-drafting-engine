@@ -19,7 +19,7 @@ type ProcessingStage =
 
 export default function HomePage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
 
   const [file, setFile] = useState<File | null>(null);
   const [stage, setStage] = useState<ProcessingStage>("idle");
@@ -28,12 +28,21 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [recentMemos, setRecentMemos] = useState<MemoListItem[]>([]);
 
+  // Redirect to sign-in if not authenticated
   useEffect(() => {
-    fetch("/api/memos")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setRecentMemos)
-      .catch(() => {});
-  }, []);
+    if (!isPending && !session) {
+      router.replace("/sign-in");
+    }
+  }, [isPending, session, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetch("/api/memos")
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setRecentMemos)
+        .catch(() => {});
+    }
+  }, [session]);
 
   const handleAnalyze = useCallback(async () => {
     if (!file) return;
@@ -114,6 +123,14 @@ export default function HomePage() {
     term_sheet: "Term Sheet",
     financial_statement: "Financial",
   };
+
+  if (isPending || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

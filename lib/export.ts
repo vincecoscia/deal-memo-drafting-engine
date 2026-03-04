@@ -9,8 +9,152 @@ import {
   TableCell,
   WidthType,
   AlignmentType,
+  BorderStyle,
+  ShadingType,
+  TableLayoutType,
 } from "docx";
 import type { DealMemoData } from "@/types";
+
+const LIGHT_GRAY_SHADING = {
+  type: ShadingType.CLEAR,
+  color: "auto",
+  fill: "F2F4F7",
+};
+
+const TABLE_BORDER = {
+  style: BorderStyle.SINGLE,
+  size: 1,
+  color: "D0D5DD",
+};
+
+const TABLE_BORDERS = {
+  top: TABLE_BORDER,
+  bottom: TABLE_BORDER,
+  left: TABLE_BORDER,
+  right: TABLE_BORDER,
+  insideHorizontal: TABLE_BORDER,
+  insideVertical: TABLE_BORDER,
+};
+
+function parseMarkdownTable(block: string): { headers: string[]; rows: string[][] } | null {
+  const lines = block.trim().split("\n").filter(Boolean);
+  if (lines.length < 2) return null;
+
+  // Check that at least the first two lines look like a table
+  if (!lines[0].includes("|") || !lines[1].includes("|")) return null;
+
+  // Second line should be the separator (e.g. |---|---|)
+  const separatorLine = lines[1].trim();
+  if (!/^[\s|:-]+$/.test(separatorLine)) return null;
+
+  const parseCells = (line: string) =>
+    line.split("|").map((c) => c.trim()).filter((c) => c !== "");
+
+  const headers = parseCells(lines[0]);
+  const rows = lines.slice(2).map(parseCells);
+
+  return { headers, rows };
+}
+
+function buildDocxTable(headers: string[], rows: string[][]): Table {
+  const colCount = headers.length;
+  const colWidth = Math.floor(100 / colCount);
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: headers.map(
+      (h) =>
+        new TableCell({
+          shading: LIGHT_GRAY_SHADING,
+          width: { size: colWidth, type: WidthType.PERCENTAGE },
+          children: [
+            new Paragraph({
+              children: buildBoldRuns(h, 18, true),
+              spacing: { before: 40, after: 40 },
+            }),
+          ],
+        })
+    ),
+  });
+
+  const dataRows = rows.map(
+    (cells, rowIdx) =>
+      new TableRow({
+        children: Array.from({ length: colCount }, (_, i) =>
+          new TableCell({
+            shading: rowIdx % 2 === 1 ? { type: ShadingType.CLEAR, color: "auto", fill: "FAFBFC" } : undefined,
+            width: { size: colWidth, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                children: buildBoldRuns(cells[i] ?? "", 18, false),
+                spacing: { before: 20, after: 20 },
+              }),
+            ],
+          })
+        ),
+      })
+  );
+
+  return new Table({
+    rows: [headerRow, ...dataRows],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    layout: TableLayoutType.FIXED,
+    borders: TABLE_BORDERS,
+  });
+}
+
+function buildBoldRuns(text: string, size: number, bold: boolean): TextRun[] {
+  const runs: TextRun[] = [];
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  for (const part of parts) {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      runs.push(new TextRun({ text: part.slice(2, -2), bold: true, size }));
+    } else {
+      runs.push(new TextRun({ text: part, bold, size }));
+    }
+  }
+  return runs;
+}
+
+function splitContentBlocks(content: string): string[] {
+  const lines = content.split("\n");
+  const blocks: string[] = [];
+  let current: string[] = [];
+  let inTable = false;
+
+  for (const line of lines) {
+    const isTableLine = line.trim().startsWith("|") || /^\s*[\s|:-]+$/.test(line.trim());
+
+    if (isTableLine) {
+      if (!inTable && current.length > 0) {
+        blocks.push(current.join("\n"));
+        current = [];
+      }
+      inTable = true;
+      current.push(line);
+    } else {
+      if (inTable) {
+        blocks.push(current.join("\n"));
+        current = [];
+        inTable = false;
+      }
+      if (line.trim() === "") {
+        if (current.length > 0) {
+          blocks.push(current.join("\n"));
+          current = [];
+        }
+      } else {
+        current.push(line);
+      }
+    }
+  }
+
+  if (current.length > 0) {
+    blocks.push(current.join("\n"));
+  }
+
+  return blocks;
+}
 
 export async function generateDocx(
   memo: DealMemoData,
@@ -128,9 +272,20 @@ export async function generateDocx(
       })
     );
 
-    const paragraphs = section.content.split("\n\n").filter(Boolean);
-    for (const para of paragraphs) {
-      const trimmed = para.trim();
+    // Split content into blocks, preserving table blocks (consecutive lines with |)
+    const blocks = splitContentBlocks(section.content);
+
+    for (const block of blocks) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+
+      // Try parsing as a markdown table
+      const tableData = parseMarkdownTable(trimmed);
+      if (tableData && tableData.headers.length > 0) {
+        children.push(buildDocxTable(tableData.headers, tableData.rows));
+        children.push(new Paragraph({ spacing: { after: 100 } }));
+        continue;
+      }
 
       // Handle bullet points
       if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
@@ -140,30 +295,17 @@ export async function generateDocx(
           children.push(
             new Paragraph({
               bullet: { level: 0 },
-              children: [new TextRun({ text, size: 20 })],
+              children: buildBoldRuns(text, 20, false),
               spacing: { after: 50 },
             })
           );
         }
       } else {
-        // Handle bold text markers
-        const runs: TextRun[] = [];
-        const parts = trimmed.split(/(\*\*.*?\*\*)/g);
-        for (const part of parts) {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            runs.push(
-              new TextRun({
-                text: part.slice(2, -2),
-                bold: true,
-                size: 20,
-              })
-            );
-          } else {
-            runs.push(new TextRun({ text: part, size: 20 }));
-          }
-        }
         children.push(
-          new Paragraph({ children: runs, spacing: { after: 100 } })
+          new Paragraph({
+            children: buildBoldRuns(trimmed, 20, false),
+            spacing: { after: 100 },
+          })
         );
       }
     }

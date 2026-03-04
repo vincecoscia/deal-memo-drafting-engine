@@ -15,7 +15,7 @@ import { TERM_SHEET_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/termSheetExtractor
 import { FINANCIAL_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/financialExtractor";
 import { MEMO_GENERATOR_SYSTEM_PROMPT } from "./prompts/memoGenerator";
 
-const MODEL = "claude-sonnet-4-5-20250929";
+const MODEL = "claude-sonnet-4-6";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
