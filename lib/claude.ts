@@ -19,6 +19,7 @@ import { FINANCIAL_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/financialExtractor"
 import { getMemoGeneratorPrompt } from "./prompts/memoGenerator";
 
 const MODEL = "claude-sonnet-4-6";
+const FILES_BETA = "files-api-2025-04-14";
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -70,7 +71,7 @@ export async function uploadPdf(
   const client = getClient();
   const buffer = Buffer.from(pdfBase64, "base64");
   const file = new File([buffer], fileName, { type: "application/pdf" });
-  const uploaded = await client.beta.files.upload({ file });
+  const uploaded = await client.beta.files.upload({ file, betas: [FILES_BETA] });
   return uploaded.id;
 }
 
@@ -87,6 +88,7 @@ export async function classifyDocument(
   const response = await (api as any).create({
     model: MODEL,
     max_tokens: 512,
+    ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
       {
         type: "text" as const,
@@ -159,6 +161,7 @@ export async function extractDocumentData(
   const response = await (api as any).create({
     model: MODEL,
     max_tokens: 16000,
+    ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
       {
         type: "text" as const,
@@ -209,6 +212,7 @@ export async function extractCIMChunked(
   const financialResponse = await (api as any).create({
     model: MODEL,
     max_tokens: 8000,
+    ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
       {
         type: "text" as const,
@@ -239,6 +243,7 @@ export async function extractCIMChunked(
   const qualitativeResponse = await (api as any).create({
     model: MODEL,
     max_tokens: 8000,
+    ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
       {
         type: "text" as const,
@@ -332,6 +337,7 @@ export function streamMemoGeneration(
   return (streamApi as any).stream({
     model: MODEL,
     max_tokens: memoFormat === "detailed" ? 20000 : memoFormat === "concise" ? 4096 : 16384,
+    ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
       {
         type: "text" as const,
