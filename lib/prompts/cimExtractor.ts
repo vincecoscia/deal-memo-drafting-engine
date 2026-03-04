@@ -17,4 +17,12 @@ For industry-specific metrics:
 - Manufacturing: Look for capacity utilization, capex intensity, maintenance vs growth capex
 - Business Services: Look for utilization rates, bill rates, revenue per employee, contract backlog
 
-In the data_gaps field, list any important data points that a PE analyst would expect to find but that are missing from this CIM.`;
+In the data_gaps field, list any important data points that a PE analyst would expect to find but that are missing from this CIM.
+
+CITATIONS — This is critical for analyst verification. In the citations field, record the exact page number and section heading where each key data point was found:
+- For every revenue and EBITDA figure, record the period, page number (format: "p.42" or "pp.42-43"), and section heading
+- For customer concentration data, record the page and section
+- For TAM/SAM market sizing claims, record the page and section
+- For management team information, record the page and section
+- For the asking price / valuation, record the page and section
+If you cannot identify the exact page, use the section heading alone.`;

@@ -192,9 +192,9 @@ export async function generateDocx(
     })
   );
 
-  // Key Metrics Table
+  // Key Metrics Table (exclude industry_metrics array — handled separately)
   const metricEntries = Object.entries(memo.metrics).filter(
-    ([, v]) => v !== null
+    ([k, v]) => v !== null && k !== "industry_metrics"
   );
   if (metricEntries.length > 0) {
     children.push(
@@ -255,6 +255,71 @@ export async function generateDocx(
     children.push(
       new Table({
         rows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+      })
+    );
+
+    children.push(new Paragraph({ spacing: { after: 300 } }));
+  }
+
+  // Industry-Specific KPIs
+  if (memo.metrics.industry_metrics && memo.metrics.industry_metrics.length > 0) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Industry KPIs",
+            bold: true,
+            size: 24,
+            color: "1B2A4A",
+          }),
+        ],
+        spacing: { before: 200, after: 100 },
+      })
+    );
+
+    const kpiRows = memo.metrics.industry_metrics.map(
+      (m) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: m.name, bold: true, size: 20 })],
+                }),
+              ],
+              width: { size: 30, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: m.value, size: 20 })],
+                }),
+              ],
+              width: { size: 30, type: WidthType.PERCENTAGE },
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: m.context ?? "",
+                      size: 18,
+                      color: "666666",
+                      italics: true,
+                    }),
+                  ],
+                }),
+              ],
+              width: { size: 40, type: WidthType.PERCENTAGE },
+            }),
+          ],
+        })
+    );
+
+    children.push(
+      new Table({
+        rows: kpiRows,
         width: { size: 100, type: WidthType.PERCENTAGE },
       })
     );

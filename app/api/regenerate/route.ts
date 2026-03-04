@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { streamSectionRegeneration } from "@/lib/claude";
 import { parseSingleSection } from "@/lib/memo-parser";
-import type { RegenerateRequest, DealMemoData, ExtractedData, DocumentType } from "@/types";
+import type { RegenerateRequest, DealMemoData, ExtractedData, DocumentType, DealSubType, MemoFormat } from "@/types";
 
 export async function POST(request: Request): Promise<Response> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -24,6 +24,8 @@ export async function POST(request: Request): Promise<Response> {
   const memoContent = memo.memoContent as unknown as DealMemoData;
   const extractedData = memo.extractedData as unknown as ExtractedData;
   const documentType = memo.documentType as DocumentType;
+  const dealSubType = ((memo as Record<string, unknown>).dealSubType as DealSubType) ?? "unknown";
+  const memoFormat = ((memo as Record<string, unknown>).memoFormat as MemoFormat) ?? "standard";
 
   const existingSection = memoContent.sections.find((s) => s.id === section_id);
   if (!existingSection) {
@@ -46,7 +48,9 @@ export async function POST(request: Request): Promise<Response> {
           existingSection.title,
           extractedData,
           documentType,
-          context
+          context,
+          dealSubType,
+          memoFormat
         );
 
         let fullText = "";

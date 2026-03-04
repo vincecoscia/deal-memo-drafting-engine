@@ -3,9 +3,11 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { MetricsDashboard } from "@/components/memo/MetricsDashboard";
+import { FinancialCharts } from "@/components/memo/FinancialCharts";
 import { TableOfContents } from "@/components/memo/TableOfContents";
 import { MemoSection } from "@/components/memo/MemoSection";
 import { RiskFlags } from "@/components/memo/RiskFlags";
+import { InvestmentScorecard } from "@/components/memo/InvestmentScorecard";
 import { RawDataPanel } from "@/components/memo/RawDataPanel";
 import { ExportControls } from "@/components/memo/ExportControls";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ import { ArrowLeft, FileText, Database } from "lucide-react";
 import type {
   DealMemoData,
   ExtractedData,
+  CIMData,
   ClassificationResult,
 } from "@/types";
 
@@ -119,6 +122,13 @@ export function MemoViewerClient({
             <MetricsDashboard metrics={memo.metrics} />
           </div>
 
+          {/* Financial Charts (CIM only) */}
+          {documentType === "cim" && "financials" in extractedData && (
+            <div className="mb-8">
+              <FinancialCharts financials={(extractedData as CIMData).financials} />
+            </div>
+          )}
+
           {/* Memo Sections */}
           <div className="space-y-6">
             {memo.sections.map((section) => (
@@ -134,6 +144,11 @@ export function MemoViewerClient({
           {/* Risk Flags */}
           <div className="mt-8">
             <RiskFlags risks={memo.risk_flags} />
+          </div>
+
+          {/* Investment Screening */}
+          <div className="mt-8 print:hidden">
+            <InvestmentScorecard memoId={memoId} />
           </div>
         </main>
 

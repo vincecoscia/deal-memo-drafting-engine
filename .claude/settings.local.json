@@ -27,7 +27,21 @@
       "Bash(gh issue view 85243 --repo vercel/next.js --json title,body,state,comments)",
       "WebFetch(domain:github.com)",
       "Bash(npm install remark-gfm)",
-      "Bash(npx tsc --noEmit --pretty)"
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(ls c:/Users/Vince/Code/braythos/deal-memo-drafting-engine/app/memo/[id]/)",
+      "Bash(ls /c/Users/Vince/Code/braythos/deal-memo-drafting-engine/app/memo/[id])",
+      "Bash(npm install recharts jspdf html2canvas)",
+      "Bash(npx prisma migrate dev --name add-deal-subtype-format-jobs)",
+      "Bash(node -e \"const pkg = require\\(''@anthropic-ai/sdk/package.json''\\); console.log\\(pkg.version\\)\")",
+      "Bash(node -e \"process.stdin.setEncoding\\(''utf8''\\); let d=''''; process.stdin.on\\(''data'',c=>d+=c\\); process.stdin.on\\(''end'',\\(\\)=>console.log\\(JSON.parse\\(d\\).version\\)\\)\")",
+      "Bash(npm install @anthropic-ai/sdk@latest)",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(Object.keys\\(c\\).filter\\(k => typeof c[k] === ''object''\\).join\\('', ''\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(''beta keys:'', Object.keys\\(c.beta\\)\\); if\\(c.beta.files\\) console.log\\(''files keys:'', Object.keys\\(c.beta.files\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const proto = Object.getPrototypeOf\\(c.beta.files\\); console.log\\(''prototype methods:'', Object.getOwnPropertyNames\\(proto\\).filter\\(n => n !== ''constructor''\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const proto = Object.getPrototypeOf\\(c.beta.files\\); console.log\\(Object.getOwnPropertyNames\\(proto\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(c.beta.files.upload.toString\\(\\).substring\\(0, 300\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(c.beta.messages\\)\\).filter\\(n => n !== ''constructor''\\)\\)\")",
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const p = Object.getPrototypeOf\\(c.beta.messages\\); console.log\\(Object.getOwnPropertyNames\\(p\\)\\)\")"
     ]
   }
 }

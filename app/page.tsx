@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSession, signOut } from "@/lib/auth-client";
 import { FileText, LogOut, Loader2, Clock } from "lucide-react";
-import type { SSEEvent, ClassificationResult, MemoListItem } from "@/types";
+import type { SSEEvent, ClassificationResult, MemoListItem, MemoFormat } from "@/types";
 
 type ProcessingStage =
   | "idle"
@@ -16,6 +16,12 @@ type ProcessingStage =
   | "extracting"
   | "generating"
   | "complete";
+
+const FORMAT_OPTIONS: { value: MemoFormat; label: string; desc: string }[] = [
+  { value: "concise", label: "Concise", desc: "2-3 page IC screening memo" },
+  { value: "standard", label: "Standard", desc: "8-12 page screening memo" },
+  { value: "detailed", label: "Detailed", desc: "25+ page full diligence memo" },
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,6 +33,7 @@ export default function HomePage() {
     useState<ClassificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentMemos, setRecentMemos] = useState<MemoListItem[]>([]);
+  const [memoFormat, setMemoFormat] = useState<MemoFormat>("standard");
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -52,6 +59,7 @@ export default function HomePage() {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("memo_format", memoFormat);
 
     try {
       const response = await fetch("/api/analyze", {
@@ -114,7 +122,7 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : "Connection failed");
       setStage("idle");
     }
-  }, [file, router]);
+  }, [file, router, memoFormat]);
 
   const isProcessing = stage !== "idle";
 
@@ -122,6 +130,13 @@ export default function HomePage() {
     cim: "CIM",
     term_sheet: "Term Sheet",
     financial_statement: "Financial",
+  };
+
+  const dealSubTypeLabel: Record<string, string> = {
+    lbo: "LBO",
+    growth_equity: "Growth Equity",
+    venture: "Venture",
+    unknown: "",
   };
 
   if (isPending || !session) {
@@ -194,6 +209,31 @@ export default function HomePage() {
               }}
             />
 
+            {/* Memo Format Selector */}
+            {file && !isProcessing && (
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-muted-foreground mb-2 text-center">
+                  Memo Format
+                </label>
+                <div className="flex justify-center gap-2">
+                  {FORMAT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setMemoFormat(opt.value)}
+                      className={`rounded-lg border px-4 py-2 text-sm transition-colors ${
+                        memoFormat === opt.value
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className="font-medium">{opt.label}</div>
+                      <div className="text-xs opacity-70">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isProcessing && (
               <ProcessingStages
                 currentStage={
@@ -205,6 +245,15 @@ export default function HomePage() {
                 }
                 classification={classification}
               />
+            )}
+
+            {/* Classification result with deal sub-type */}
+            {isProcessing && classification && classification.deal_sub_type && classification.deal_sub_type !== "unknown" && (
+              <div className="mt-2 flex justify-center">
+                <span className="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
+                  {dealSubTypeLabel[classification.deal_sub_type] ?? classification.deal_sub_type}
+                </span>
+              </div>
             )}
 
             {error && (

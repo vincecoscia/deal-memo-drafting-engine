@@ -5,8 +5,39 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
-import { RefreshCw, Pencil, Check, X, Loader2 } from "lucide-react";
+import { RefreshCw, Pencil, Check, X, Loader2, AlertTriangle } from "lucide-react";
 import type { MemoSection as MemoSectionType } from "@/types";
+
+function CitationText({ children }: { children: string }) {
+  const parts = children.split(/(\[p\.\d+(?:[-–]\d+)?(?:,\s*[^\]]+)?\])/g);
+  if (parts.length === 1) return <>{children}</>;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/^\[p\.(\d+(?:[-–]\d+)?)(?:,\s*(.+))?\]$/);
+        if (!match) return <span key={i}>{part}</span>;
+        const page = match[1];
+        const section = match[2] ?? "";
+        return (
+          <span
+            key={i}
+            className="inline-flex cursor-pointer items-baseline rounded bg-primary/10 px-1 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            title={`Source: Page ${page}${section ? `, ${section}` : ""}`}
+            onClick={() => {
+              const rawPanel = document.querySelector("[data-raw-panel]");
+              if (rawPanel) {
+                rawPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+          >
+            p.{page}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 interface MemoSectionProps {
   section: MemoSectionType;
@@ -19,10 +50,28 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
   const [editContent, setEditContent] = useState(section.content);
   const [regenerating, setRegenerating] = useState(false);
 
-  const handleSave = useCallback(() => {
-    onUpdate(section.id, editContent, section.confidence_score);
-    setEditing(false);
-  }, [editContent, onUpdate, section.id, section.confidence_score]);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await fetch(`/api/memos/${memoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section_id: section.id,
+          content: editContent,
+          confidence_score: section.confidence_score,
+        }),
+      });
+      onUpdate(section.id, editContent, section.confidence_score);
+      setEditing(false);
+    } catch (err) {
+      console.error("Failed to save section:", err);
+    } finally {
+      setSaving(false);
+    }
+  }, [editContent, onUpdate, section.id, section.confidence_score, memoId]);
 
   const handleRegenerate = useCallback(async () => {
     setRegenerating(true);
@@ -113,6 +162,21 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
           </div>
         </div>
 
+        {/* Verification Warnings */}
+        {section.verification_flags && section.verification_flags.length > 0 && (
+          <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-warning mb-1">
+              <AlertTriangle className="h-4 w-4" />
+              Verification Flags
+            </div>
+            <ul className="text-xs text-muted-foreground space-y-1 ml-6 list-disc">
+              {section.verification_flags.map((flag, i) => (
+                <li key={i}>{flag}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Content */}
         {editing ? (
           <div className="space-y-3">
@@ -122,9 +186,13 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
               className="min-h-[200px] w-full rounded-lg border border-input bg-background p-4 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave}>
-                <Check className="mr-1 h-3.5 w-3.5" />
-                Save
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="mr-1 h-3.5 w-3.5" />
+                )}
+                {saving ? "Saving..." : "Save"}
               </Button>
               <Button
                 size="sm"
@@ -151,6 +219,36 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
                     <div className="overflow-x-auto rounded-lg border border-border my-4">
                       <table>{children}</table>
                     </div>
+                  ),
+                  p: ({ children }) => (
+                    <p>
+                      {Array.isArray(children)
+                        ? children.map((child, i) =>
+                            typeof child === "string" ? (
+                              <CitationText key={i}>{child}</CitationText>
+                            ) : (
+                              child
+                            )
+                          )
+                        : typeof children === "string"
+                          ? <CitationText>{children}</CitationText>
+                          : children}
+                    </p>
+                  ),
+                  li: ({ children }) => (
+                    <li>
+                      {Array.isArray(children)
+                        ? children.map((child, i) =>
+                            typeof child === "string" ? (
+                              <CitationText key={i}>{child}</CitationText>
+                            ) : (
+                              child
+                            )
+                          )
+                        : typeof children === "string"
+                          ? <CitationText>{children}</CitationText>
+                          : children}
+                    </li>
                   ),
                 }}
               >

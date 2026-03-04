@@ -34,7 +34,7 @@ export function RawDataPanel({
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-raw-panel>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Raw Data

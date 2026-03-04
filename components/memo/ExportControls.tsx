@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Copy, Check, Printer, Loader2 } from "lucide-react";
+import { Download, Copy, Check, Printer, Loader2, FileDown } from "lucide-react";
 import type { DealMemoData } from "@/types";
 
 interface ExportControlsProps {
@@ -12,6 +12,7 @@ interface ExportControlsProps {
 
 export function ExportControls({ memoId, memo }: ExportControlsProps) {
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleExportWord = async () => {
@@ -41,6 +42,49 @@ export function ExportControls({ memoId, memo }: ExportControlsProps) {
     }
   };
 
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const mainContent = document.querySelector("main");
+      if (!mainContent) throw new Error("Could not find main content");
+
+      const canvas = await html2canvas(mainContent as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const companyName = memo.metrics.company_name?.replace(/[^a-zA-Z0-9]/g, "_") ?? "export";
+      pdf.save(`deal-memo-${companyName}.pdf`);
+    } catch (err) {
+      console.error("PDF export error:", err);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handleCopy = async () => {
     const text = memo.sections
       .map((s) => `# ${s.title}\n\n${s.content}`)
@@ -63,7 +107,20 @@ export function ExportControls({ memoId, memo }: ExportControlsProps) {
         ) : (
           <Download className="mr-2 h-4 w-4" />
         )}
-        Export Word
+        Word
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleExportPdf}
+        disabled={exportingPdf}
+      >
+        {exportingPdf ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <FileDown className="mr-2 h-4 w-4" />
+        )}
+        PDF
       </Button>
       <Button variant="outline" size="sm" onClick={handleCopy}>
         {copied ? (

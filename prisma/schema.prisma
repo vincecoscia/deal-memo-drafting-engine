@@ -57,14 +57,28 @@ model Verification {
 }
 
 model DealMemo {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documentName   String
-  documentType   String
-  classification Json
-  extractedData  Json
-  memoContent    Json
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentName    String
+  documentType    String
+  dealSubType     String?
+  memoFormat      String?
+  anthropicFileId String?
+  classification  Json
+  extractedData   Json
+  memoContent     Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProcessingJob {
+  id        String   @id @default(cuid())
+  userId    String
+  status    String   @default("pending")
+  memoId    String?
+  errorMsg  String?
+  fileName  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

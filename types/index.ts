@@ -4,6 +4,7 @@ export type DocumentType = "cim" | "term_sheet" | "financial_statement";
 
 export interface ClassificationResult {
   document_type: DocumentType;
+  deal_sub_type: DealSubType;
   confidence: number;
   reasoning: string;
 }
@@ -110,6 +111,7 @@ export interface CIMData {
     market_data: string | null;
     management: string | null;
   };
+  citations: CitationMap | null;
 }
 
 // ── Term Sheet Extraction ──
@@ -226,12 +228,37 @@ export type ExtractedData = CIMData | TermSheetData | FinancialData;
 
 // ── Deal Memo ──
 
+export interface Citation {
+  page: string;
+  section: string;
+}
+
+export interface CitationMap {
+  revenue_figures: Array<{ period: string; page: string; section: string }>;
+  ebitda_figures: Array<{ period: string; page: string; section: string }>;
+  customer_concentration: Citation | null;
+  tam_sam: Citation | null;
+  management: Citation | null;
+  asking_price: Citation | null;
+}
+
 export interface MemoSection {
   id: string;
   title: string;
   content: string;
   confidence_score: number;
+  verification_flags?: string[];
 }
+
+export interface IndustryMetric {
+  name: string;
+  value: string;
+  context: string | null;
+}
+
+export type DealSubType = "lbo" | "growth_equity" | "venture" | "unknown";
+
+export type MemoFormat = "concise" | "standard" | "detailed";
 
 export interface DealMemoData {
   metrics: {
@@ -243,6 +270,7 @@ export interface DealMemoData {
     revenue_growth: string | null;
     industry: string | null;
     employee_count: string | null;
+    industry_metrics: IndustryMetric[] | null;
   };
   sections: MemoSection[];
   risk_flags: Array<{
@@ -265,6 +293,23 @@ export type SSEEvent =
       memo: DealMemoData;
     }
   | { type: "error"; message: string };
+
+// ── Investment Criteria Scoring ──
+
+export interface InvestmentCriterion {
+  name: string;
+  score: number; // 1-5
+  weight: number; // 0-1
+  rationale: string;
+  data_quality: "strong" | "moderate" | "weak";
+}
+
+export interface InvestmentScorecard {
+  overall_score: number; // weighted average 1-5
+  recommendation: "strong_pass" | "pass" | "conditional_pass" | "fail";
+  criteria: InvestmentCriterion[];
+  summary: string;
+}
 
 // ── API Request/Response ──
 

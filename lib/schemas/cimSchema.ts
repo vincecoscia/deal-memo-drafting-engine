@@ -211,6 +211,69 @@ export const CIM_EXTRACTION_SCHEMA = {
         "management",
       ],
     },
+    citations: {
+      type: ["object", "null"],
+      description: "Per-data-point page citations for analyst verification",
+      properties: {
+        revenue_figures: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              period: { type: "string" },
+              page: { type: "string", description: "e.g. 'p.42' or 'pp.42-43'" },
+              section: { type: "string", description: "Section heading where found" },
+            },
+            required: ["period", "page", "section"],
+          },
+        },
+        ebitda_figures: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              period: { type: "string" },
+              page: { type: "string" },
+              section: { type: "string" },
+            },
+            required: ["period", "page", "section"],
+          },
+        },
+        customer_concentration: {
+          type: ["object", "null"],
+          properties: {
+            page: { type: "string" },
+            section: { type: "string" },
+          },
+          required: ["page", "section"],
+        },
+        tam_sam: {
+          type: ["object", "null"],
+          properties: {
+            page: { type: "string" },
+            section: { type: "string" },
+          },
+          required: ["page", "section"],
+        },
+        management: {
+          type: ["object", "null"],
+          properties: {
+            page: { type: "string" },
+            section: { type: "string" },
+          },
+          required: ["page", "section"],
+        },
+        asking_price: {
+          type: ["object", "null"],
+          properties: {
+            page: { type: "string" },
+            section: { type: "string" },
+          },
+          required: ["page", "section"],
+        },
+      },
+      required: ["revenue_figures", "ebitda_figures"],
+    },
   },
   required: [
     "company",
@@ -223,5 +286,6 @@ export const CIM_EXTRACTION_SCHEMA = {
     "risks",
     "data_gaps",
     "source_pages",
+    "citations",
   ],
 };

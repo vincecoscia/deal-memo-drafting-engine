@@ -10,12 +10,21 @@ import type {
 
 const SECTION_TITLES: Record<string, string> = {
   executive_summary: "Executive Summary",
+  transaction_overview: "Transaction Overview",
   company_overview: "Company Overview",
+  products_and_services: "Products & Services",
+  customer_and_supplier_analysis: "Customer & Supplier Analysis",
+  operations: "Operations",
+  management_team: "Management Team",
   market_and_competitive_position: "Market & Competitive Position",
   financial_overview: "Financial Overview",
   investment_highlights: "Investment Highlights",
   key_risks: "Key Risks & Mitigants",
+  value_creation_strategy: "Value Creation Strategy",
   valuation_context: "Preliminary Valuation Context",
+  deal_structure_and_financing: "Deal Structure & Financing",
+  exit_strategy: "Exit Strategy",
+  due_diligence_status: "Due Diligence Status",
   next_steps: "Recommended Next Steps",
 };
 
@@ -72,6 +81,7 @@ function extractMetrics(
     revenue_growth: null,
     industry: null,
     employee_count: null,
+    industry_metrics: null,
   };
 
   if (documentType === "cim" && isCIM(data)) {
@@ -95,6 +105,14 @@ function extractMetrics(
       metrics.revenue_growth = latest.revenue_growth_pct
         ? `${latest.revenue_growth_pct}%`
         : null;
+    }
+
+    // Surface industry-specific metrics
+    if (
+      data.industry_specific_metrics?.metrics &&
+      data.industry_specific_metrics.metrics.length > 0
+    ) {
+      metrics.industry_metrics = data.industry_specific_metrics.metrics;
     }
   } else if (documentType === "term_sheet" && isTermSheet(data)) {
     metrics.deal_value = data.economic_terms.purchase_price;
