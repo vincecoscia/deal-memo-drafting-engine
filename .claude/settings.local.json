@@ -41,7 +41,8 @@
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const proto = Object.getPrototypeOf\\(c.beta.files\\); console.log\\(Object.getOwnPropertyNames\\(proto\\)\\)\")",
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(c.beta.files.upload.toString\\(\\).substring\\(0, 300\\)\\)\")",
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(c.beta.messages\\)\\).filter\\(n => n !== ''constructor''\\)\\)\")",
-      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const p = Object.getPrototypeOf\\(c.beta.messages\\); console.log\\(Object.getOwnPropertyNames\\(p\\)\\)\")"
+      "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const p = Object.getPrototypeOf\\(c.beta.messages\\); console.log\\(Object.getOwnPropertyNames\\(p\\)\\)\")",
+      "Bash(xargs wc -l)"
     ]
   }
 }

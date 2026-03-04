@@ -17,7 +17,7 @@ import {
   SheetTrigger,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ArrowLeft, FileText, Database } from "lucide-react";
+import { ArrowLeft, FileText, Database, Trash2 } from "lucide-react";
 import type {
   DealMemoData,
   ExtractedData,
@@ -88,6 +88,19 @@ export function MemoViewerClient({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                if (!confirm("Delete this memo? This cannot be undone.")) return;
+                fetch(`/api/memos/${memoId}`, { method: "DELETE" })
+                  .then((r) => { if (r.ok) router.push("/"); });
+              }}
+              title="Delete memo"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <ExportControls memoId={memoId} memo={memo} />
             {/* Mobile raw data toggle */}
             <Sheet>

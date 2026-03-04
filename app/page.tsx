@@ -7,7 +7,7 @@ import { ProcessingStages } from "@/components/upload/ProcessingStages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSession, signOut } from "@/lib/auth-client";
-import { FileText, LogOut, Loader2, Clock } from "lucide-react";
+import { FileText, LogOut, Loader2, Clock, Trash2 } from "lucide-react";
 import type { SSEEvent, ClassificationResult, MemoListItem, MemoFormat } from "@/types";
 
 type ProcessingStage =
@@ -309,6 +309,20 @@ export default function HomePage() {
                       <span>
                         {new Date(memo.createdAt).toLocaleDateString()}
                       </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!confirm("Delete this memo? This cannot be undone.")) return;
+                          fetch(`/api/memos/${memo.id}`, { method: "DELETE" })
+                            .then((r) => {
+                              if (r.ok) setRecentMemos((prev) => prev.filter((m) => m.id !== memo.id));
+                            });
+                        }}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        title="Delete memo"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </CardContent>
                 </Card>

@@ -48,3 +48,22 @@ export async function PATCH(
 
   return Response.json({ success: true });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return new Response("Unauthorized", { status: 401 });
+
+  const { id } = await params;
+
+  const memo = await prisma.dealMemo.findUnique({ where: { id } });
+  if (!memo || memo.userId !== session.user.id) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  await prisma.dealMemo.delete({ where: { id } });
+
+  return Response.json({ success: true });
+}
