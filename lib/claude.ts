@@ -461,7 +461,7 @@ export async function scoreInvestment(
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [
       {
         role: "user",
@@ -478,7 +478,6 @@ Score each criterion from 1 (poor) to 5 (excellent) with appropriate weights. Cr
 1. **Revenue Quality** (weight: 0.15) — Recurring revenue %, customer concentration, contract visibility
 2. **Growth Profile** (weight: 0.15) — Historical revenue growth, TAM/SAM, organic vs acquisition-driven
 3. **Margin & Profitability** (weight: 0.15) — EBITDA margins, margin trends, EBITDA adjustments quality
-4. **Margin & Profitability** (weight: 0.15) — EBITDA margins, margin trends, EBITDA adjustments quality
 4. **Management Team** (weight: 0.10) — Tenure, depth, succession readiness
 5. **Market Position** (weight: 0.10) — Competitive moat, market share, barriers to entry
 6. **Customer Base** (weight: 0.10) — Diversification, retention, relationship depth
@@ -503,6 +502,10 @@ Rules:
       },
     ],
   });
+
+  if (response.stop_reason === "max_tokens") {
+    throw new Error("Scoring response was truncated — model ran out of tokens");
+  }
 
   const text = response.content.find((b) => b.type === "text");
   if (!text || text.type !== "text") {
