@@ -21,12 +21,27 @@ export default async function MemoPage({ params }: Props) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/sign-in");
 
-  const memo = await prisma.dealMemo.findUnique({ where: { id } });
+  const memo = await prisma.dealMemo.findUnique({
+    where: { id },
+    include: {
+      sourceDocuments: {
+        select: { id: true, fileName: true, documentType: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
   if (!memo || memo.userId !== session.user.id) notFound();
 
   const memoData = memo.memoContent as unknown as DealMemoData;
   const extractedData = memo.extractedData as unknown as ExtractedData;
   const classification = memo.classification as unknown as ClassificationResult;
+
+  const initialSourceDocs = memo.sourceDocuments.map((d) => ({
+    id: d.id,
+    fileName: d.fileName,
+    documentType: d.documentType as "cim" | "term_sheet" | "financial_statement",
+    createdAt: d.createdAt.toISOString(),
+  }));
 
   return (
     <MemoViewerClient
@@ -36,6 +51,7 @@ export default async function MemoPage({ params }: Props) {
       classification={classification}
       documentName={memo.documentName}
       documentType={memo.documentType}
+      initialSourceDocs={initialSourceDocs}
     />
   );
 }

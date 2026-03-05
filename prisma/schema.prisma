@@ -57,9 +57,9 @@ model Verification {
 }
 
 model DealMemo {
-  id              String   @id @default(cuid())
+  id              String           @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   documentName    String
   documentType    String
   dealSubType     String?
@@ -68,17 +68,39 @@ model DealMemo {
   classification  Json
   extractedData   Json
   memoContent     Json
+  sourceDocuments SourceDocument[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model SourceDocument {
+  id              String   @id @default(cuid())
+  memoId          String
+  memo            DealMemo @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  fileName        String
+  documentType    String
+  anthropicFileId String?
+  classification  Json
+  extractedData   Json
+  pageCount       Int?
+  fileSize        Int?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 }
 
 model ProcessingJob {
-  id        String   @id @default(cuid())
-  userId    String
-  status    String   @default("pending")
-  memoId    String?
-  errorMsg  String?
-  fileName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String
+  status               String   @default("pending")
+  memoId               String?
+  errorMsg             String?
+  fileName             String?
+  fileSize             Int?
+  pageCount            Int?
+  memoFormat           String?
+  progress             Json?
+  anthropicFileId      String?
+  classificationResult Json?
+  extractedData        Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }

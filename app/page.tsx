@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSession, signOut } from "@/lib/auth-client";
 import { FileText, LogOut, Loader2, Clock, Trash2 } from "lucide-react";
+import { SampleDocumentPicker } from "@/components/upload/SampleDocumentPicker";
+import type { SampleDocument } from "@/lib/sample-documents";
 import type { SSEEvent, ClassificationResult, MemoListItem, MemoFormat } from "@/types";
 
 type ProcessingStage =
@@ -28,6 +30,8 @@ export default function HomePage() {
   const { data: session, isPending } = useSession();
 
   const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [selectedSample, setSelectedSample] = useState<SampleDocument | null>(null);
   const [stage, setStage] = useState<ProcessingStage>("idle");
   const [classification, setClassification] =
     useState<ClassificationResult | null>(null);
@@ -51,14 +55,70 @@ export default function HomePage() {
     }
   }, [session]);
 
+  const pollJobStatus = useCallback(
+    async (jobId: string) => {
+      const stageMap: Record<string, ProcessingStage> = {
+        classifying: "classifying",
+        extracting: "extracting",
+        generating: "generating",
+        verifying: "generating",
+        complete: "complete",
+      };
+
+      const maxPolls = 120;
+      for (let i = 0; i < maxPolls; i++) {
+        try {
+          const res = await fetch(`/api/jobs/${jobId}`);
+          if (!res.ok) break;
+
+          const job = await res.json();
+          const mappedStage = stageMap[job.status] ?? "classifying";
+          setStage(mappedStage);
+
+          if (job.classificationResult) {
+            setClassification(job.classificationResult);
+          }
+
+          if (job.status === "complete" && job.memoId) {
+            router.push(`/memo/${job.memoId}`);
+            return;
+          }
+
+          if (job.status === "failed") {
+            setError(job.errorMsg ?? "Processing failed");
+            setStage("idle");
+            return;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } catch {
+          break;
+        }
+      }
+
+      setError("Processing timed out — please try again");
+      setStage("idle");
+    },
+    [router]
+  );
+
   const handleAnalyze = useCallback(async () => {
-    if (!file) return;
+    const hasFiles = files.length > 0;
+    if (!file && !selectedSample && !hasFiles) return;
     setError(null);
     setStage("classifying");
     setClassification(null);
 
     const formData = new FormData();
-    formData.append("file", file);
+    if (selectedSample) {
+      formData.append("sample_id", selectedSample.id);
+    } else if (hasFiles) {
+      for (const f of files) {
+        formData.append("files", f);
+      }
+    } else if (file) {
+      formData.append("file", file);
+    }
     formData.append("memo_format", memoFormat);
 
     try {
@@ -71,6 +131,17 @@ export default function HomePage() {
         setError(`Upload failed: ${response.statusText}`);
         setStage("idle");
         return;
+      }
+
+      // Check for async mode response
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const json = await response.json();
+        if (json.mode === "async" && json.jobId) {
+          // Poll job status
+          await pollJobStatus(json.jobId);
+          return;
+        }
       }
 
       const reader = response.body?.getReader();
@@ -122,7 +193,7 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : "Connection failed");
       setStage("idle");
     }
-  }, [file, router, memoFormat]);
+  }, [file, files, selectedSample, router, memoFormat]);
 
   const isProcessing = stage !== "idle";
 
@@ -198,19 +269,45 @@ export default function HomePage() {
         <Card className="mb-8">
           <CardContent className="pt-6">
             <DropZone
-              onFile={setFile}
+              onFile={(f) => {
+                setFile(f);
+                setFiles([]);
+                setSelectedSample(null);
+              }}
+              onFiles={(fs) => {
+                setFiles(fs);
+                setFile(null);
+                setSelectedSample(null);
+              }}
               disabled={isProcessing}
               selectedFile={file}
+              selectedFiles={files.length > 0 ? files : undefined}
+              multiple
               onClear={() => {
                 setFile(null);
+                setFiles([]);
+                setSelectedSample(null);
                 setStage("idle");
                 setClassification(null);
                 setError(null);
               }}
             />
 
+            {!file && files.length === 0 && !isProcessing && (
+              <div className="mt-6">
+                <SampleDocumentPicker
+                  onSelect={(sample) => {
+                    setSelectedSample(sample);
+                    setFile(null);
+                  }}
+                  disabled={isProcessing}
+                  selectedId={selectedSample?.id}
+                />
+              </div>
+            )}
+
             {/* Memo Format Selector */}
-            {file && !isProcessing && (
+            {(file || files.length > 0 || selectedSample) && !isProcessing && (
               <div className="mt-6">
                 <label className="block text-sm font-medium text-muted-foreground mb-2 text-center">
                   Memo Format
@@ -262,7 +359,7 @@ export default function HomePage() {
               </p>
             )}
 
-            {file && !isProcessing && (
+            {(file || files.length > 0 || selectedSample) && !isProcessing && (
               <div className="mt-6 flex justify-center">
                 <Button size="lg" onClick={handleAnalyze} className="px-8">
                   Generate Deal Memo

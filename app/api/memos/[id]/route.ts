@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import type { DealMemoData } from "@/types";
+import type { DealMemoData, ExtractedData } from "@/types";
+import { getStaleSections } from "@/lib/data-dependencies";
 
 export async function PATCH(
   request: Request,
@@ -47,6 +48,42 @@ export async function PATCH(
   });
 
   return Response.json({ success: true });
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return new Response("Unauthorized", { status: 401 });
+
+  const { id } = await params;
+  const body = await request.json();
+  const { extractedData, changedPaths } = body as {
+    extractedData: ExtractedData;
+    changedPaths: string[];
+  };
+
+  if (!extractedData) {
+    return new Response("Missing extractedData", { status: 400 });
+  }
+
+  const memo = await prisma.dealMemo.findUnique({ where: { id } });
+  if (!memo || memo.userId !== session.user.id) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  // Determine which sections are stale
+  const staleSections = getStaleSections(changedPaths ?? []);
+
+  await prisma.dealMemo.update({
+    where: { id },
+    data: {
+      extractedData: extractedData as object,
+    },
+  });
+
+  return Response.json({ success: true, staleSections });
 }
 
 export async function DELETE(

@@ -154,5 +154,24 @@ ${BASE_SECTIONS}`;
   return prompt;
 }
 
+export function getMultiDocMemoPrompt(
+  dealSubType: DealSubType = "unknown",
+  memoFormat: MemoFormat = "standard"
+): string {
+  const base = getMemoGeneratorPrompt(dealSubType, memoFormat);
+
+  return `${base}
+
+MULTI-DOCUMENT ANALYSIS INSTRUCTIONS:
+You are analyzing MULTIPLE source documents for this deal. These may include a CIM, term sheet, and/or financial statements.
+
+Key requirements for multi-document memos:
+1. **Cross-reference** — When the same data point appears in multiple documents, note agreement or discrepancy. E.g., "Revenue of $42M [CIM, p.18] is consistent with audited financials [$41.8M, Financial Statement, p.3]"
+2. **Discrepancy flagging** — If documents disagree on a figure (e.g., CIM projects $50M revenue but financials show $38M run-rate), explicitly flag this in the relevant section and in key_risks
+3. **Source attribution** — Always indicate which document each data point comes from: [CIM], [Term Sheet], [Financials]
+4. **Completeness** — Synthesize across all documents to provide the most complete picture. Use the CIM for narrative/qualitative data, financial statements for audited figures, and term sheets for deal structure
+5. **Priority hierarchy** — For financial figures: audited financials > CIM figures > term sheet references. For deal terms: term sheet > CIM references`;
+}
+
 // Keep backward-compatible default export for existing code that hasn't migrated
 export const MEMO_GENERATOR_SYSTEM_PROMPT = getMemoGeneratorPrompt();

@@ -43,9 +43,10 @@ interface MemoSectionProps {
   section: MemoSectionType;
   memoId: string;
   onUpdate: (sectionId: string, content: string, confidence: number) => void;
+  stale?: boolean;
 }
 
-export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
+export function MemoSection({ section, memoId, onUpdate, stale = false }: MemoSectionProps) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(section.content);
   const [regenerating, setRegenerating] = useState(false);
@@ -174,6 +175,25 @@ export function MemoSection({ section, memoId, onUpdate }: MemoSectionProps) {
                 <li key={i}>{flag}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Stale Data Banner */}
+        {stale && !editing && !regenerating && (
+          <div className="mb-4 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
+              <AlertTriangle className="h-4 w-4" />
+              Source data has changed — this section may be outdated
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs border-yellow-300 dark:border-yellow-700"
+              onClick={handleRegenerate}
+            >
+              <RefreshCw className="mr-1 h-3 w-3" />
+              Regenerate
+            </Button>
           </div>
         )}
 

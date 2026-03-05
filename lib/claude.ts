@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Tool } from "@anthropic-ai/sdk/resources/messages";
 import type {
   ClassificationResult,
   DocumentType,
@@ -7,6 +6,7 @@ import type {
   MemoFormat,
   ExtractedData,
   InvestmentScorecard,
+  MultiDocContext,
 } from "@/types";
 import { CLASSIFICATION_SCHEMA } from "./schemas/classificationSchema";
 import { CIM_EXTRACTION_SCHEMA } from "./schemas/cimSchema";
@@ -16,9 +16,11 @@ import { CLASSIFIER_SYSTEM_PROMPT } from "./prompts/classifier";
 import { CIM_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/cimExtractor";
 import { TERM_SHEET_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/termSheetExtractor";
 import { FINANCIAL_EXTRACTOR_SYSTEM_PROMPT } from "./prompts/financialExtractor";
-import { getMemoGeneratorPrompt } from "./prompts/memoGenerator";
+import { getMemoGeneratorPrompt, getMultiDocMemoPrompt } from "./prompts/memoGenerator";
 
-const MODEL = "claude-sonnet-4-6";
+import { type ModelId } from "./model-selector";
+
+export const DEFAULT_MODEL: ModelId = "claude-sonnet-4-6";
 const FILES_BETA = "files-api-2025-04-14";
 
 function getClient() {
@@ -79,16 +81,28 @@ export async function uploadPdf(
 
 export async function classifyDocument(
   pdfBase64: string | null,
-  fileId: string | null = null
+  fileId: string | null = null,
+  model: ModelId = DEFAULT_MODEL,
+  textContent?: string
 ): Promise<ClassificationResult> {
   const client = getClient();
-  const api = getMessagesApi(client, fileId);
+  const api = textContent ? client.messages : getMessagesApi(client, fileId);
+
+  const docContent = textContent
+    ? { type: "text" as const, text: `Document content:\n\n${textContent}` }
+    : getDocBlock(pdfBase64, fileId);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const response = await (api as any).create({
-    model: MODEL,
+    model,
     max_tokens: 512,
-    ...(fileId ? { betas: [FILES_BETA] } : {}),
+    ...(!textContent && fileId ? { betas: [FILES_BETA] } : {}),
+    output_config: {
+      format: {
+        type: "json_schema" as const,
+        schema: CLASSIFICATION_SCHEMA,
+      },
+    },
     system: [
       {
         type: "text" as const,
@@ -96,19 +110,11 @@ export async function classifyDocument(
         cache_control: { type: "ephemeral" as const },
       },
     ],
-    tools: [
-      {
-        name: "classify_document",
-        description: "Classify the uploaded financial document",
-        input_schema: CLASSIFICATION_SCHEMA as Tool.InputSchema,
-      },
-    ],
-    tool_choice: { type: "tool" as const, name: "classify_document" },
     messages: [
       {
         role: "user",
         content: [
-          getDocBlock(pdfBase64, fileId),
+          docContent,
           { type: "text" as const, text: "Classify this document." },
         ],
       },
@@ -116,11 +122,11 @@ export async function classifyDocument(
   });
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
-  const toolUse = response.content.find((b: { type: string }) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Classification failed: no tool_use response");
+  const textBlock = response.content.find((b: { type: string }) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Classification failed: no text response");
   }
-  return toolUse.input as unknown as ClassificationResult;
+  return JSON.parse(textBlock.text) as ClassificationResult;
 }
 
 // ── Step 2: Extract structured data ──
@@ -150,18 +156,30 @@ const EXTRACTION_CONFIGS: Record<
 export async function extractDocumentData(
   pdfBase64: string | null,
   documentType: DocumentType,
-  fileId: string | null = null
+  fileId: string | null = null,
+  model: ModelId = DEFAULT_MODEL,
+  textContent?: string
 ): Promise<ExtractedData> {
   const config = EXTRACTION_CONFIGS[documentType];
   if (!config) throw new Error(`Unsupported document type: ${documentType}`);
 
   const client = getClient();
-  const api = getMessagesApi(client, fileId);
+  const api = textContent ? client.messages : getMessagesApi(client, fileId);
+
+  const docContent = textContent
+    ? { type: "text" as const, text: `Document content:\n\n${textContent}` }
+    : getDocBlock(pdfBase64, fileId);
 
   const response = await (api as any).create({
-    model: MODEL,
+    model,
     max_tokens: 16000,
-    ...(fileId ? { betas: [FILES_BETA] } : {}),
+    ...(!textContent && fileId ? { betas: [FILES_BETA] } : {}),
+    output_config: {
+      format: {
+        type: "json_schema" as const,
+        schema: config.schema,
+      },
+    },
     system: [
       {
         type: "text" as const,
@@ -169,19 +187,11 @@ export async function extractDocumentData(
         cache_control: { type: "ephemeral" as const },
       },
     ],
-    tools: [
-      {
-        name: config.toolName,
-        description: "Extract structured data from the document",
-        input_schema: config.schema,
-      },
-    ],
-    tool_choice: { type: "tool" as const, name: config.toolName },
     messages: [
       {
         role: "user",
         content: [
-          getDocBlock(pdfBase64, fileId),
+          docContent,
           {
             type: "text" as const,
             text: "Extract all relevant data from this document.",
@@ -191,18 +201,19 @@ export async function extractDocumentData(
     ],
   });
 
-  const toolUse = response.content.find((b: { type: string }) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Extraction failed: no tool_use response");
+  const textBlock = response.content.find((b: { type: string }) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Extraction failed: no text response");
   }
-  return toolUse.input as unknown as ExtractedData;
+  return JSON.parse(textBlock.text) as ExtractedData;
 }
 
 // ── Step 2b: Multi-pass chunked extraction for large CIMs ──
 
 export async function extractCIMChunked(
   pdfBase64: string | null,
-  fileId: string | null = null
+  fileId: string | null = null,
+  model: ModelId = DEFAULT_MODEL
 ): Promise<ExtractedData> {
   const client = getClient();
   const api = getMessagesApi(client, fileId);
@@ -210,9 +221,15 @@ export async function extractCIMChunked(
 
   // Pass 1: Financial data extraction
   const financialResponse = await (api as any).create({
-    model: MODEL,
+    model,
     max_tokens: 8000,
     ...(fileId ? { betas: [FILES_BETA] } : {}),
+    output_config: {
+      format: {
+        type: "json_schema" as const,
+        schema: CIM_EXTRACTION_SCHEMA,
+      },
+    },
     system: [
       {
         type: "text" as const,
@@ -220,14 +237,6 @@ export async function extractCIMChunked(
         cache_control: { type: "ephemeral" as const },
       },
     ],
-    tools: [
-      {
-        name: "extract_cim_data",
-        description: "Extract financial data from the CIM",
-        input_schema: CIM_EXTRACTION_SCHEMA as Tool.InputSchema,
-      },
-    ],
-    tool_choice: { type: "tool" as const, name: "extract_cim_data" },
     messages: [
       {
         role: "user",
@@ -241,9 +250,15 @@ export async function extractCIMChunked(
 
   // Pass 2: Customer, management, market data
   const qualitativeResponse = await (api as any).create({
-    model: MODEL,
+    model,
     max_tokens: 8000,
     ...(fileId ? { betas: [FILES_BETA] } : {}),
+    output_config: {
+      format: {
+        type: "json_schema" as const,
+        schema: CIM_EXTRACTION_SCHEMA,
+      },
+    },
     system: [
       {
         type: "text" as const,
@@ -251,14 +266,6 @@ export async function extractCIMChunked(
         cache_control: { type: "ephemeral" as const },
       },
     ],
-    tools: [
-      {
-        name: "extract_cim_data",
-        description: "Extract qualitative data from the CIM",
-        input_schema: CIM_EXTRACTION_SCHEMA as Tool.InputSchema,
-      },
-    ],
-    tool_choice: { type: "tool" as const, name: "extract_cim_data" },
     messages: [
       {
         role: "user",
@@ -270,15 +277,15 @@ export async function extractCIMChunked(
     ],
   });
 
-  const financialData = financialResponse.content.find((b: { type: string }) => b.type === "tool_use");
-  const qualitativeData = qualitativeResponse.content.find((b: { type: string }) => b.type === "tool_use");
+  const financialText = financialResponse.content.find((b: { type: string }) => b.type === "text");
+  const qualitativeText = qualitativeResponse.content.find((b: { type: string }) => b.type === "text");
 
-  if (!financialData || financialData.type !== "tool_use" || !qualitativeData || qualitativeData.type !== "tool_use") {
+  if (!financialText || financialText.type !== "text" || !qualitativeText || qualitativeText.type !== "text") {
     throw new Error("Chunked extraction failed");
   }
 
-  const financial = financialData.input as any;
-  const qualitative = qualitativeData.input as any;
+  const financial = JSON.parse(financialText.text) as any;
+  const qualitative = JSON.parse(qualitativeText.text) as any;
 
   // Merge: financials from pass 1, qualitative from pass 2
   return {
@@ -301,6 +308,85 @@ export async function extractCIMChunked(
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// ── Step 2c: Page-range chunked extraction for >100 page docs ──
+
+export async function extractDocumentByPageChunks(
+  chunks: { base64: string; startPage: number; endPage: number }[],
+  documentType: DocumentType,
+  model: ModelId = DEFAULT_MODEL
+): Promise<ExtractedData> {
+  // Process each chunk and merge results
+  const results: ExtractedData[] = [];
+
+  for (const chunk of chunks) {
+    let fileId: string | null = null;
+    try {
+      fileId = await uploadPdf(chunk.base64, `chunk-p${chunk.startPage}-${chunk.endPage}.pdf`);
+    } catch {
+      // Fall back to base64
+    }
+
+    const result = await extractDocumentData(
+      fileId ? null : chunk.base64,
+      documentType,
+      fileId,
+      model
+    );
+    results.push(result);
+  }
+
+  if (results.length === 1) return results[0];
+
+  // Merge results — take the richest data from each chunk
+  return mergeExtractedData(results, documentType);
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mergeExtractedData(
+  results: ExtractedData[],
+  documentType: DocumentType
+): ExtractedData {
+  if (documentType === "cim") {
+    // For CIMs, merge across all chunks
+    const all = results as any[];
+    const best = (field: string, scoreFn: (val: any) => number) => {
+      let bestVal = all[0]?.[field];
+      let bestScore = scoreFn(bestVal);
+      for (let i = 1; i < all.length; i++) {
+        const score = scoreFn(all[i]?.[field]);
+        if (score > bestScore) {
+          bestVal = all[i][field];
+          bestScore = score;
+        }
+      }
+      return bestVal;
+    };
+
+    return {
+      company: best("company", (c) => (c?.name ? 1 : 0)),
+      deal: best("deal", (d) => (d?.asking_price ? 1 : 0)),
+      financials: best("financials", (f) => f?.historical?.length ?? 0),
+      customers: best("customers", (c) => (c?.total_customers ? 1 : 0)),
+      management: best("management", (m) => m?.length ?? 0),
+      market: best("market", (m) => (m?.tam ? 1 : 0)),
+      growth_opportunities: all.flatMap((r) => r.growth_opportunities || []),
+      risks: all.flatMap((r) => r.risks || []),
+      industry_specific_metrics: best("industry_specific_metrics", (m) => m?.metrics?.length ?? 0),
+      data_gaps: all.flatMap((r) => r.data_gaps || []),
+      source_pages: best("source_pages", (s) => Object.values(s || {}).filter(Boolean).length),
+      citations: best("citations", (c) => (c ? 1 : 0)),
+    } as ExtractedData;
+  }
+
+  // For other document types, take the first result with the most data
+  return results.reduce((best, current) => {
+    const bestSize = JSON.stringify(best).length;
+    const currentSize = JSON.stringify(current).length;
+    return currentSize > bestSize ? current : best;
+  });
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ── Step 3: Stream memo generation ──
 
 export function streamMemoGeneration(
@@ -309,7 +395,8 @@ export function streamMemoGeneration(
   dealSubType: DealSubType = "unknown",
   memoFormat: MemoFormat = "standard",
   pdfBase64: string | null = null,
-  fileId: string | null = null
+  fileId: string | null = null,
+  model: ModelId = DEFAULT_MODEL
 ) {
   const client = getClient();
   const systemPrompt = getMemoGeneratorPrompt(dealSubType, memoFormat);
@@ -335,7 +422,7 @@ export function streamMemoGeneration(
   const streamApi = fileId ? client.beta.messages : client.messages;
 
   return (streamApi as any).stream({
-    model: MODEL,
+    model,
     max_tokens: memoFormat === "detailed" ? 20000 : memoFormat === "concise" ? 4096 : 16384,
     ...(fileId ? { betas: [FILES_BETA] } : {}),
     system: [
@@ -364,13 +451,14 @@ export function streamSectionRegeneration(
   documentType: DocumentType,
   existingContext: string,
   dealSubType: DealSubType = "unknown",
-  memoFormat: MemoFormat = "standard"
+  memoFormat: MemoFormat = "standard",
+  model: ModelId = DEFAULT_MODEL
 ) {
   const client = getClient();
   const systemPrompt = getMemoGeneratorPrompt(dealSubType, memoFormat);
 
   return client.messages.stream({
-    model: MODEL,
+    model,
     max_tokens: memoFormat === "detailed" ? 4096 : 2048,
     system: [
       {
@@ -409,11 +497,12 @@ Return ONLY the single section with its header and confidence tag.`,
 export async function verifyMemoSection(
   sectionContent: string,
   extractedData: ExtractedData,
-  sectionId: string
+  sectionId: string,
+  model: ModelId = DEFAULT_MODEL
 ): Promise<{ verified: boolean; flags: string[] }> {
   const client = getClient();
   const response = await client.messages.create({
-    model: MODEL,
+    model,
     max_tokens: 1024,
     messages: [
       {
@@ -455,12 +544,13 @@ If everything checks out, return { "verified": true, "flags": [] }.`,
 export async function scoreInvestment(
   extractedData: ExtractedData,
   documentType: DocumentType,
-  dealSubType: DealSubType = "unknown"
+  dealSubType: DealSubType = "unknown",
+  model: ModelId = DEFAULT_MODEL
 ): Promise<InvestmentScorecard> {
   const client = getClient();
 
   const response = await client.messages.create({
-    model: MODEL,
+    model,
     max_tokens: 4096,
     messages: [
       {
@@ -518,4 +608,63 @@ Rules:
   }
 
   return JSON.parse(jsonMatch[0]) as InvestmentScorecard;
+}
+
+// ── Multi-document memo generation ──
+
+export function streamMultiDocMemoGeneration(
+  multiDocContext: MultiDocContext,
+  dealSubType: DealSubType = "unknown",
+  memoFormat: MemoFormat = "standard",
+  fileIds: string[],
+  model: ModelId = DEFAULT_MODEL
+) {
+  const client = getClient();
+  const systemPrompt = getMultiDocMemoPrompt(dealSubType, memoFormat);
+
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const content: any[] = [];
+
+  // Include source PDFs for reference
+  for (const fid of fileIds) {
+    try {
+      content.push(pdfBlockFromFileId(fid));
+    } catch {
+      // Skip if file reference fails
+    }
+  }
+
+  // Build merged data summary
+  const docSummaries = multiDocContext.documents.map(
+    (d) => `### ${d.fileName} (${d.documentType.replace("_", " ")})\n${JSON.stringify(d.extractedData, null, 2)}`
+  ).join("\n\n---\n\n");
+
+  content.push({
+    type: "text" as const,
+    text: `Generate a comprehensive deal screening memo synthesizing data from ${multiDocContext.documents.length} source documents.\n\nPre-extracted structured data from each document:\n\n${docSummaries}`,
+    cache_control: { type: "ephemeral" as const },
+  });
+
+  const useFilesBeta = fileIds.length > 0;
+  const streamApi = useFilesBeta ? client.beta.messages : client.messages;
+
+  return (streamApi as any).stream({
+    model,
+    max_tokens: memoFormat === "detailed" ? 20000 : memoFormat === "concise" ? 4096 : 16384,
+    ...(useFilesBeta ? { betas: [FILES_BETA] } : {}),
+    system: [
+      {
+        type: "text" as const,
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" as const },
+      },
+    ],
+    messages: [
+      {
+        role: "user",
+        content,
+      },
+    ],
+  });
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }

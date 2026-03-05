@@ -42,7 +42,13 @@
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(c.beta.files.upload.toString\\(\\).substring\\(0, 300\\)\\)\")",
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); console.log\\(Object.getOwnPropertyNames\\(Object.getPrototypeOf\\(c.beta.messages\\)\\).filter\\(n => n !== ''constructor''\\)\\)\")",
       "Bash(node -e \"const a = require\\(''@anthropic-ai/sdk''\\); const c = new a.default\\({apiKey:''test''}\\); const p = Object.getPrototypeOf\\(c.beta.messages\\); console.log\\(Object.getOwnPropertyNames\\(p\\)\\)\")",
-      "Bash(xargs wc -l)"
+      "Bash(xargs wc -l)",
+      "Bash(wc -l /c/Users/Vince/Code/braythos/deal-memo-drafting-engine/lib/schemas/*.ts)",
+      "Bash(wc -l /c/Users/Vince/Code/braythos/deal-memo-drafting-engine/lib/prompts/*.ts)",
+      "Bash(npm install pdf-lib)",
+      "Bash(ls /c/Users/Vince/Code/braythos/deal-memo-drafting-engine/app/api/memos/[id]/)",
+      "Bash(npx prisma db push)",
+      "Bash(npm install exceljs)"
     ]
   }
 }

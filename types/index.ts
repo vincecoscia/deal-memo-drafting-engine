@@ -278,6 +278,7 @@ export interface DealMemoData {
     severity: "high" | "medium" | "low";
     mitigant: string | null;
   }>;
+  financialModels?: import("@/lib/financial-models").FinancialModelData;
 }
 
 // ── SSE Events ──
@@ -323,4 +324,24 @@ export interface MemoListItem {
   documentName: string;
   documentType: string;
   createdAt: string;
+}
+
+// ── Multi-Document Analysis ──
+
+export interface SourceDocumentInfo {
+  id: string;
+  fileName: string;
+  documentType: DocumentType;
+  createdAt: string;
+}
+
+export interface MultiDocContext {
+  documents: Array<{
+    fileName: string;
+    documentType: DocumentType;
+    extractedData: ExtractedData;
+  }>;
+  primaryCIM?: CIMData;
+  termSheet?: TermSheetData;
+  financials?: FinancialData;
 }

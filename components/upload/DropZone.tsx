@@ -6,53 +6,80 @@ import { Button } from "@/components/ui/button";
 
 interface DropZoneProps {
   onFile: (file: File) => void;
+  onFiles?: (files: File[]) => void;
   disabled?: boolean;
   selectedFile: File | null;
+  selectedFiles?: File[];
+  multiple?: boolean;
   onClear: () => void;
 }
 
 export function DropZone({
   onFile,
+  onFiles,
   disabled,
   selectedFile,
+  selectedFiles,
+  multiple = false,
   onClear,
 }: DropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const validate = useCallback(
-    (file: File) => {
+  const validateFile = useCallback((file: File): string | null => {
+    if (file.type !== "application/pdf") return "Only PDF files are accepted.";
+    if (file.size > 32 * 1024 * 1024) return `${file.name} exceeds 32 MB limit.`;
+    return null;
+  }, []);
+
+  const handleFiles = useCallback(
+    (fileList: FileList) => {
       setError(null);
-      if (file.type !== "application/pdf") {
-        setError("Only PDF files are accepted.");
-        return;
+      if (multiple && onFiles) {
+        const validFiles: File[] = [];
+        for (const file of Array.from(fileList)) {
+          const err = validateFile(file);
+          if (err) {
+            setError(err);
+            return;
+          }
+          validFiles.push(file);
+        }
+        onFiles(validFiles);
+      } else {
+        const file = fileList[0];
+        if (file) {
+          const err = validateFile(file);
+          if (err) {
+            setError(err);
+            return;
+          }
+          onFile(file);
+        }
       }
-      if (file.size > 32 * 1024 * 1024) {
-        setError("File exceeds 32 MB limit.");
-        return;
-      }
-      onFile(file);
     },
-    [onFile]
+    [multiple, onFile, onFiles, validateFile]
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) validate(file);
+      if (e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
     },
-    [validate]
+    [handleFiles]
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) validate(file);
+      if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+      }
     },
-    [validate]
+    [handleFiles]
   );
 
   const formatSize = (bytes: number) => {
@@ -60,34 +87,41 @@ export function DropZone({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  if (selectedFile) {
+  const files = selectedFiles ?? (selectedFile ? [selectedFile] : []);
+
+  if (files.length > 0) {
     return (
-      <div className="rounded-xl border-2 border-accent/30 bg-accent/5 p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-lg bg-accent/10 p-3">
-              <FileText className="h-8 w-8 text-accent" />
+      <div className="rounded-xl border-2 border-accent/30 bg-accent/5 p-6">
+        <div className="space-y-3">
+          {files.map((file, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="rounded-lg bg-accent/10 p-2">
+                <FileText className="h-5 w-5 text-accent" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {file.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatSize(file.size)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-foreground">
-                {selectedFile.name}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {formatSize(selectedFile.size)}
-              </p>
-            </div>
-          </div>
-          {!disabled && (
+          ))}
+        </div>
+        {!disabled && (
+          <div className="mt-3 flex justify-end">
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={onClear}
               className="text-muted-foreground hover:text-foreground"
             >
-              <X className="h-5 w-5" />
+              <X className="mr-1 h-4 w-4" />
+              Clear
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -112,6 +146,7 @@ export function DropZone({
           ref={inputRef}
           type="file"
           accept=".pdf"
+          multiple={multiple}
           onChange={handleChange}
           className="hidden"
         />
@@ -119,11 +154,11 @@ export function DropZone({
           className={`mx-auto mb-4 h-12 w-12 ${isDragging ? "text-accent" : "text-muted-foreground/50"}`}
         />
         <p className="text-lg font-medium text-foreground">
-          Drop your PDF here
+          Drop your PDF{multiple ? "(s)" : ""} here
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           or click to browse — CIM, term sheet, or financial statement (max 32
-          MB)
+          MB{multiple ? " each" : ""})
         </p>
       </div>
       {error && (
